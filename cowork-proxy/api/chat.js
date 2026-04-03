@@ -1,0 +1,44 @@
+// Cowork AI Proxy — Vercel Serverless Function
+// Forwards requests to the Anthropic API with CORS support.
+// Deploy this to Vercel, set ANTHROPIC_API_KEY (and optionally COWORK_TOKEN)
+// as environment variables, and point the onboarding tool at:
+//   https://your-project.vercel.app/api/chat
+
+export default async function handler(req, res) {
+  // CORS — required for browser requests from the local HTML tool
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Cowork-Token');
+
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+
+  // Optional: protect with a shared secret token
+  if (process.env.COWORK_TOKEN) {
+    const token = req.headers['x-cowork-token'];
+    if (token !== process.env.COWORK_TOKEN) {
+      return res.status(401).json({ error: 'Unauthorized — check your proxy token in Settings' });
+    }
+  }
+
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return res.status(500).json({ error: 'ANTHROPIC_API_KEY is not set in Vercel environment variables' });
+  }
+
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': process.env.ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify(req.body),
+    });
+
+    const data = await response.json();
+    return res.status(response.status).json(data);
+  } catch (err) {
+    return res.status(500).json({ error: 'Proxy error', details: err.message });
+  }
+}

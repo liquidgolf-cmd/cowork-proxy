@@ -1,0 +1,6 @@
+{
+  "name": "cowork-proxy",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Vercel proxy for the Cowork Client Onboarding Tool — forwards requests to the Anthropic API with CORS support."
+}
